@@ -1,0 +1,1 @@
+[assembly: Unity.Burst.BurstCompile(FloatMode = Unity.Burst.FloatMode.Deterministic)]
