@@ -1,4 +1,4 @@
-# Latios Framework Add-Ons [0.6.0]
+# Latios Framework Add-Ons [0.7.0]
 
 This is an extra Unity package for the Latios Framework containing various
 add-on modules and functionality.
@@ -60,6 +60,8 @@ how to contribute your own add-ons or improve existing add-ons.
 -   Cyline (DreamingImLatios port) – A simple 3D Line Renderer
 -   Shuriken (DreamingImLatios) – A recreation of Unity’s particle system in
     pure ECS (still under construction)
+-   Terrainy (TrustNoOneElse & DreamingImLatios) - A Unity terrain support for
+    ECS runtime
 
 ### Tweening
 
@@ -71,6 +73,7 @@ how to contribute your own add-ons or improve existing add-ons.
 -   Webheart – Primary author of FlowFields Navigation
 -   clandais – Primary author of Navigator
 -   Alejandro Nunez – Primary co-author of Mecanim V2
+-   TrustNoOneElse – Primary co-author of Terrainy
 -   Sovogal – Primary author of Mecanim V1
 -   aqscithe – Contributor to Anna and Psyshock
 -   Obrazy – Contributor to Anna

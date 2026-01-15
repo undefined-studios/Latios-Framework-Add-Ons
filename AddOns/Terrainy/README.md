@@ -1,0 +1,36 @@
+﻿# Terrainy
+
+This addon provides baking support for a terrain. It bakes the tree prefabs and details used on the terrain as entities. 
+
+**Warning: This add-on is still under construction**
+
+## Features
+
+- Baking of terrian colliders in psyshock physics
+- Baking of trees as entities
+- Baking of details as entities
+- Renders at runtime in subscene using the terrain data
+- Supports both Unity Transform and Latios Transform
+
+## Getting Started
+
+**Scripting Define:** 
+*LATIOS_ADDON_TERRAINY*
+*LATIOS_ADDON_TERRAINY_DEBUG* For debugging purposes
+
+**Requirements:**
+
+-  Latios Framework 0.14.x
+-  Unity 6.3 or higher
+-  Samples if you don't want to write your own shaders
+
+**Main Author(s):** 
+- Dreaming I’m Latios
+- TrustNoOneElse
+
+**Additional Contributors:** *Not at the moment*
+
+**Support:** On the Discord server of the latios framework under the region "Support For Framework Users" in the channel #add-ons.
+
+To get started, you must download the samples from the addons folder via package manager.
+Than you need to place your terrains in the subscenes to be baked.
