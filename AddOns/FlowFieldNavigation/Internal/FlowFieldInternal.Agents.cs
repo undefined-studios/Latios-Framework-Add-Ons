@@ -4,7 +4,6 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace Latios.FlowFieldNavigation
 {
@@ -24,88 +23,97 @@ namespace Latios.FlowFieldNavigation
                 var controls = chunk.GetNativeArray(ref TypeHandles.AgentDirection);
                 var prevPositions = chunk.GetNativeArray(ref TypeHandles.PrevPosition);
                 var velocities = chunk.GetNativeArray(ref TypeHandles.Velocity);
-                var footprints = chunk.GetNativeArray(ref TypeHandles.AgentFootprint);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
 
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var position = chunkTransforms[i].position;
                     var prevPosition = prevPositions[i].Value;
-                    var footprint = footprints[i].Size;
                     var newVelocity = (position.xz - prevPosition) / DeltaTime;
                     velocities[i] = new FlowField.Velocity { Value = newVelocity };
                     prevPositions[i] = new FlowField.PrevPosition { Value = position.xz };
 
-                    var newPos = CalculateFootprintDirection(position, footprint, in Field, in Flow);
-                    controls[i] = new FlowField.AgentDirection { Value = newPos };
+                    var direction = SampleFlowBilinear(position, in Field, in Flow);
+
+                    var flowStrength = math.length(direction);
+                    if (flowStrength < 0.01f)
+                    {
+                        controls[i] = new FlowField.AgentDirection { Value = float2.zero };
+                        continue;
+                    }
+
+                    var density = SampleDensityBilinear(position, in Field);
+                    var densityRatio = math.saturate(density / FlowSettings.MaxDensity);
+                    direction *= 1f - densityRatio * densityRatio;
+
+                    var prevDir = controls[i].Value;
+                    direction = math.lerp(prevDir, direction, math.saturate(8f * DeltaTime));
+                    controls[i] = new FlowField.AgentDirection { Value = direction };
                 }
             }
         }
 
-        static float2 CalculateFootprintDirection(float3 worldPos,int footprintSize, in Field field, in Flow flow)
+        static float2 SampleFlowBilinear(float3 worldPos, in Field field, in Flow flow)
         {
-            if (!field.TryWorldToFootprint(worldPos, footprintSize, out var footprint))
-            {
-                return float2.zero;
-            }
+            WorldToGridFrac(worldPos, in field, out var cellMin, out var frac);
 
+            var d00 = SampleCell(cellMin, in field, in flow);
+            var d10 = SampleCell(cellMin + new int2(1, 0), in field, in flow);
+            var d01 = SampleCell(cellMin + new int2(0, 1), in field, in flow);
+            var d11 = SampleCell(cellMin + new int2(1, 1), in field, in flow);
+
+            var dx0 = math.lerp(d00, d10, frac.x);
+            var dx1 = math.lerp(d01, d11, frac.x);
+            var result = math.lerp(dx0, dx1, frac.y);
+
+            return math.normalizesafe(result) * math.length(result);
+        }
+
+        static float2 SampleCell(int2 cell, in Field field, in Flow flow)
+        {
+            cell = math.clamp(cell, 0, new int2(field.Width - 1, field.Height - 1));
+            var index = Grid.CellToIndex(field.Width, cell);
+            var direction = flow.GetDirection(index);
+            var speedFactor = field.GetSpeedFactor(index);
+            return direction * speedFactor;
+        }
+
+        static float SampleDensityBilinear(float3 worldPos, in Field field)
+        {
+            WorldToGridFrac(worldPos, in field, out var cellMin, out var frac);
+
+            var d00 = SampleDensityCell(cellMin, in field);
+            var d10 = SampleDensityCell(cellMin + new int2(1, 0), in field);
+            var d01 = SampleDensityCell(cellMin + new int2(0, 1), in field);
+            var d11 = SampleDensityCell(cellMin + new int2(1, 1), in field);
+
+            return math.lerp(
+                math.lerp(d00, d10, frac.x),
+                math.lerp(d01, d11, frac.x),
+                frac.y);
+        }
+
+        static void WorldToGridFrac(float3 worldPos, in Field field, out int2 cellMin, out float2 frac)
+        {
             var localPos = worldPos - field.Transform.Value.position;
             var invRotation = math.inverse(field.Transform.Value.rotation);
             var unrotatedPos = math.rotate(invRotation, localPos);
             var adjustedPos = unrotatedPos - field.GetGridOffset();
 
-            var gridCoords = new float2(
+            var gridPos = new float2(
                 adjustedPos.x / field.CellSize.x,
                 adjustedPos.z / field.CellSize.y
             );
 
-            var totalDirection = float2.zero;
-            var totalWeight = 0f;
-            
-            var totalGradient = float2.zero;
-            var maxDensity = 0f;
+            var samplePos = gridPos - 0.5f;
+            cellMin = (int2)math.floor(samplePos);
+            frac = samplePos - math.float2(cellMin);
+        }
 
-            for (var x = footprint.x; x <= footprint.z; x++)
-            {
-                for (var y = footprint.y; y <= footprint.w; y++)
-                {
-                    if (!field.IsValidCell(new int2(x, y)))
-                        continue;
-
-                    var index = Grid.CellToIndex(field.Width, new int2(x, y));
-
-                    var cellCenter = new float2(
-                        x * field.CellSize.x + field.CellSize.x * 0.5f,
-                        y * field.CellSize.y + field.CellSize.y * 0.5f
-                    );
-                    
-                    var distance = math.distance(gridCoords, cellCenter);
-                    var weight = 1f / (1f + distance);
-                    var direction = flow.GetDirection(index);
-                    var speedFactor = field.GetSpeedFactor(index);
-                    totalDirection += direction * speedFactor * weight;
-                    totalWeight += weight;
-
-                    var density = field.GetDensity(index);
-                    maxDensity = math.max(maxDensity, density);
-                    var toAgent = gridCoords - cellCenter;
-                    totalGradient += toAgent * (density / FlowSettings.MaxDensity);
-                }
-            }
-            
-            if (totalWeight > 0)
-            {
-                var flowDirection = totalDirection / totalWeight;
-                var flowLength = math.length(flowDirection);
-
-                var avoidanceDirection = math.normalizesafe(totalGradient);
-                var avoidanceStrength = math.saturate(maxDensity / FlowSettings.MaxDensity);
-                var blendedDirection = math.lerp(flowDirection, avoidanceDirection, avoidanceStrength);
-
-                return math.normalizesafe(blendedDirection) * flowLength;
-            }
-
-            return float2.zero;
+        static float SampleDensityCell(int2 cell, in Field field)
+        {
+            cell = math.clamp(cell, 0, new int2(field.Width - 1, field.Height - 1));
+            return field.GetDensity(Grid.CellToIndex(field.Width, cell));
         }
     }
 }
