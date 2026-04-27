@@ -17,7 +17,8 @@ provides an API for feeding constraints directly to the solver.
 
 **Requirements:**
 
--   Requires Latios Framework 0.13.7 or newer
+-   Requires Latios Framework 0.15.0 or newer
+-   Requires using QVVS Transforms
 
 **Main Author(s):** Dreaming I’m Latios
 
@@ -43,6 +44,9 @@ var anna = Latios.Anna.AnnaBootstrap.InstallAnna(world);
 anna.SetRateManagerCreateAllocator(new SubstepRateManager(0.034f, 8));
 ```
 
+You can also inject `AnnaSuperSystem` manually, as that system performs the
+entire update process.
+
 ### Basic Usage
 
 Use the `CollisionTagAuthoring` component to specify static environment and
@@ -61,7 +65,7 @@ overthink it).
 
 ### Shockwave Integration
 
-Anna builds the Shockwave `WorldCollisionAspect` after `TransformSuperSystem`
+Anna builds the Shockwave `WorldCollisionAspect` at the end of `AnnaSuperSystem`
 within a frame. AABBs will be expanded to include the full motion or rigid
 bodies and kinematic colliders since the start of the frame. This only occurs if
 Shockwave is installed. `WorldCollisionAspect` lives on the

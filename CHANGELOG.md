@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-4-12
+
+### Changed
+
+-   Updated Terrainy
+-   Updated Mecanim V2 to v0.1.6
+-   Updated Anna to v0.3.0
+-   Updated Cyline to v0.1.2
+
 ## [0.7.2] - 2026-3-14
 
 ### Changed

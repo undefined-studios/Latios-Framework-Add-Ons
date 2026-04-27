@@ -1,5 +1,4 @@
 using Latios.Psyshock;
-using Latios.Transforms.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -10,7 +9,6 @@ namespace Latios.Anna.Systems
 {
     [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(TransformSuperSystem))]
     public partial class AnnaSuperSystem : RootSuperSystem
     {
         protected override void CreateSystems()
@@ -22,6 +20,7 @@ namespace Latios.Anna.Systems
             GetOrCreateAndAddManagedSystem<ConstraintWritingSuperSystem>();
             GetOrCreateAndAddUnmanagedSystem<SolveSystem>();
             GetOrCreateAndAddUnmanagedSystem<IntegrateRigidBodiesSystem>();
+            GetOrCreateAndAddUnmanagedSystem<BuildWorldCollisionAspectSystem>();
         }
     }
 

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Latios.Mecanim
 {
-    public readonly partial struct MecanimAspect : IAspect
+    public readonly partial struct MecanimAspect : Unity.Entities.IAspect
     {
         readonly RefRW<MecanimController>        m_controller;
         readonly EnabledRefRW<MecanimController> m_controllerEnabled;

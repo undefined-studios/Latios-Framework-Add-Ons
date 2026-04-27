@@ -30,9 +30,11 @@ namespace Latios.Smoothie
             {
                 outputBuilder = outputBuilder.With(ComponentType.ReadWrite(t));
 #if !LATIOS_TRANSFORMS_UNITY
-                if (t == TypeManager.GetTypeIndex<LocalTransform>())
+                if (t == TypeManager.GetTypeIndex<WorldTransform>())
                 {
-                    outputBuilder.With(ComponentType.ReadOnly<ParentToWorldTransform>());
+                    outputBuilder.With(ComponentType.ReadOnly<EntityInHierarchy>());
+                    outputBuilder.With(ComponentType.ReadOnly<EntityInHierarchyCleanup>());
+                    outputBuilder.With(ComponentType.ReadOnly<RootReference>());
                 }
 #endif
             }

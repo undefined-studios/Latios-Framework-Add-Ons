@@ -11,8 +11,6 @@ using Unity.Mathematics;
 
 namespace Latios.Anna.Systems
 {
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(Transforms.Systems.TransformSuperSystem))]
     [DisableAutoCreation]
     [BurstCompile]
     public partial struct BuildWorldCollisionAspectSystem : ISystem, ISystemNewScene

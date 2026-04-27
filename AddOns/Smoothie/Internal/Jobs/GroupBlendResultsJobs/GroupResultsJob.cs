@@ -31,7 +31,6 @@ namespace Latios.Smoothie
                 return;
 
 #if !LATIOS_TRANSFORMS_UNITY
-            var localTransformTypeIndex = TypeManager.GetTypeIndex<LocalTransform>();
             var worldTransformTypeIndex = TypeManager.GetTypeIndex<WorldTransform>();
 #endif
 
@@ -50,13 +49,14 @@ namespace Latios.Smoothie
                     var binding = capture.bindingPtr[i].binding;
 
 #if !LATIOS_TRANSFORMS_UNITY
-                    if (binding.typeIndex == localTransformTypeIndex)
-                    {
-                        // We want to use TransformAspect on transform bindings, which means we want to combine local and world bindings.
-                        // We do this by changing the typeIndex to WorldTransform and adding 48 bytes to the offset.
-                        binding.typeIndex  = worldTransformTypeIndex;
-                        binding.offset    += 48;
-                    }
+                    // Todo: Figure out how to portray local transforms
+                    //if (binding.typeIndex == localTransformTypeIndex)
+                    //{
+                    //    // We want to use TransformAspect on transform bindings, which means we want to combine local and world bindings.
+                    //    // We do this by changing the typeIndex to WorldTransform and adding 48 bytes to the offset.
+                    //    binding.typeIndex  = worldTransformTypeIndex;
+                    //    binding.offset    += 48;
+                    //}
 #endif
 
                     sortableOutputs[sortableIndex] = new SortableOutput

@@ -1,6 +1,5 @@
 using System;
 using Latios.Kinemation;
-using Latios.Kinemation.Systems;
 using static Unity.Entities.SystemAPI;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -14,7 +13,6 @@ using Unity.Rendering;
 namespace Latios.Cyline.Systems
 {
     [UpdateInGroup(typeof(UpdatePresentationSystemGroup))]
-    [UpdateBefore(typeof(KinemationRenderUpdateSuperSystem))]
     [RequireMatchingQueriesForUpdate]
     [DisableAutoCreation]
     [BurstCompile]

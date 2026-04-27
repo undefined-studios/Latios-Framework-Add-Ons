@@ -122,8 +122,8 @@ namespace Latios.Mecanim
 
                 var passages = passagesByMachine[0];
                 BlendAllPassages(ref motionBlender, passages, ref blob, ref clips, parameters, 0, false, isVeryFirstUpdate);
-                motionBlender.rootMotionResult.worldIndex = math.asint(1f);
-                bones[0]                                  = motionBlender.rootMotionResult;
+                motionBlender.rootMotionResult.context32 = math.asint(1f);
+                bones[0]                                 = motionBlender.rootMotionResult;
             }
             else
             {
@@ -204,8 +204,8 @@ namespace Latios.Mecanim
                     };
                     var passages = passagesByMachine[layer.stateMachineIndex];
                     BlendAllPassages(ref motionBlender, passages, ref blob, ref clips, parameters, layerIndex, !layerInfluencesBones, isVeryFirstUpdate);
-                    motionBlender.rootMotionResult.worldIndex = math.asint(1f);
-                    sampleBuffer[0]                           = motionBlender.rootMotionResult;
+                    motionBlender.rootMotionResult.context32 = math.asint(1f);
+                    sampleBuffer[0]                          = motionBlender.rootMotionResult;
                     motionBlender.blender.Normalize();
 
                     // Blend the result down to the mix buffer

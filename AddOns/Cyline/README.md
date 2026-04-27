@@ -11,7 +11,7 @@ the original work created for Game Objects here:
 
 **Requirements:**
 
--   Requires Latios Framework 0.12.0 or newer
+-   Requires Latios Framework 0.15.0 or newer
 
 **Main Author(s):** Dreaming I’m Latios
 

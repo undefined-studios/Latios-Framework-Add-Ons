@@ -10,7 +10,7 @@ familiar Game Object-based animation tooling in your Latios Framework project.
 
 **Requirements:**
 
--   Requires Latios Framework 0.12.4 or newer
+-   Requires Latios Framework 0.15.0 or newer
 
 **Main Author(s):** Dreaming I’m Latios & Alejandro Nunez
 

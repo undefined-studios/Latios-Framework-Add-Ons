@@ -120,7 +120,7 @@ namespace Latios.Terrainy.Systems
             var commandBuffer      = new InstantiateCommandBufferCommand1<LocalToWorld, TerrainInstantiationCommand>(state.WorldUpdateAllocator);
             var commandBufferLocal = new InstantiateCommandBufferCommand1<LocalTransform, TerrainInstantiationCommand>(state.WorldUpdateAllocator);
 #else
-            var commandBuffer = new InstantiateCommandBufferCommand1<WorldTransform, TerrainInstantiationCommand>(state.WorldUpdateAllocator);
+            var commandBuffer = new InstantiateCommandBufferCommand2<WorldTransformCommand, TerrainInstantiationCommand>(state.WorldUpdateAllocator);
 #endif
             foreach (var terrainEntity in terrainEntities)
             {
@@ -217,7 +217,7 @@ namespace Latios.Terrainy.Systems
                                           ref DynamicBuffer<DetailsInstanceElement> detailInstanceElements,
                                           ref EntityManager entityManager,
                                           WorldTransform wt,
-                                          ref InstantiateCommandBufferCommand1<WorldTransform, TerrainInstantiationCommand> commandBuffer,
+                                          ref InstantiateCommandBufferCommand2<WorldTransformCommand, TerrainInstantiationCommand> commandBuffer,
                                           Entity terrainEntity,
                                           ref DynamicBuffer<TreeInstanceElement> treeInstances)
         {
@@ -240,7 +240,7 @@ namespace Latios.Terrainy.Systems
                     }
                     var scale         = detailCellElement.Scale.x;
                     wt.worldTransform = new TransformQvvs(worldPos, rotation, scale, 1f);
-                    commandBuffer.Add(correspondingInstance.Prefab, wt, terrainInstantiationCommand);
+                    commandBuffer.Add(correspondingInstance.Prefab, new WorldTransformCommand(wt.worldTransform), terrainInstantiationCommand);
                 }
             }
             var treePrototypes = SystemAPI.GetBuffer<TreePrototypeElement>(terrainEntity);
@@ -270,7 +270,7 @@ namespace Latios.Terrainy.Systems
                     wtLocalQvvs.scale      *= scale.x;
                     wtLocalQvvs.rotation    = math.mul(rotation, wtLocalQvvs.rotation);
                     wtLocal.worldTransform  = wtLocalQvvs;
-                    commandBuffer.Add(correspondingInstance.Prefab, wtLocal, terrainInstantiationCommand);
+                    commandBuffer.Add(correspondingInstance.Prefab, new WorldTransformCommand(wtLocal.worldTransform), terrainInstantiationCommand);
                 }
             }
         }

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] – 2026-4-12
+
+### Changed
+
+-   Anna now updates Shockwave’s `WorldCollisionAspect` at the end of
+    `AnnaSuperSystem`, as there is no longer a need to wait for a transform
+    system update
+
 ## [0.2.3] – 2025-9-13
 
 ### Added

@@ -29,52 +29,54 @@ namespace Latios.Smoothie
 #if !LATIOS_TRANSFORMS_UNITY
                 if (componentData.typeIndex == worldTransformTypeIndex)
                 {
-                    var worldTransforms      = chunkData.targetChunk.GetNativeArray<WorldTransform>(ref broker);
-                    var hasLocalTransforms   = chunkData.targetChunk.Has<LocalTransform>();  // The type might not be in the broker.
-                    var localTransforms      = hasLocalTransforms ? chunkData.targetChunk.GetNativeArray<LocalTransform>(ref broker) : default;
-                    var parentTransforms     = hasLocalTransforms ? chunkData.targetChunk.GetNativeArray<ParentToWorldTransform>(ref broker) : default;
-                    var transformAspectArray = new TransformAspect.ResolvedChunk
-                    {
-                        Length                                      = worldTransforms.Length,
-                        TransformAspect_m_worldTransformNaC         = worldTransforms,
-                        TransformAspect_m_localTransformNaC         = localTransforms,
-                        TransformAspect_m_parentToWorldTransformNaC = parentTransforms,
-                    };
-
-                    for (int i = 0; i < componentData.outputValueCount; i++)
-                    {
-                        var  index                  = outputValueDataList[componentData.outputValueStartIndex + i].entityIndex;
-                        var  transform              = transformAspectArray[index];
-                        var  worldTransform         = transform.worldTransform;
-                        var  localTransform         = transform.localTransform;
-                        var  worldTransformPtr      = (byte*)&worldTransform;
-                        var  localTransformPtr      = (byte*)&localTransform;
-                        bool worldTransformModified = false;
-                        bool localTransformModified = false;
-                        for (int j = 0; j < componentData.outputValueCount; i++, j++)
-                        {
-                            var outputData = outputValueDataList[componentData.outputValueStartIndex + j];
-                            if (outputData.entityIndex != index)
-                            {
-                                i--;
-                                break;
-                            }
-                            if (outputData.componentBindingOffset >= 48)
-                            {
-                                localTransformModified = true;
-                                UnsafeUtility.MemCpy(localTransformPtr + outputData.componentBindingOffset - 48, outputData.outputPtr, outputData.componentBindingByteCount);
-                            }
-                            else
-                            {
-                                worldTransformModified = true;
-                                UnsafeUtility.MemCpy(worldTransformPtr + outputData.componentBindingOffset, outputData.outputPtr, outputData.componentBindingByteCount);
-                            }
-                        }
-                        if (worldTransformModified)
-                            transform.worldTransform = worldTransform;
-                        if (localTransformModified)
-                            transform.localTransform = localTransform;
-                    }
+                    throw new System.NotImplementedException();
+                    //var worldTransforms      = chunkData.targetChunk.GetNativeArray<WorldTransform>(ref broker);
+                    //var rootReferences = chunkData.targetChunk.GetNativeArray<RootReference>(ref broker);
+                    //var hasLocalTransforms   = chunkData.targetChunk.Has<RootReference>(ref broker);  // The type might not be in the broker.
+                    //var localTransforms      = hasLocalTransforms ? chunkData.targetChunk.GetNativeArray<LocalTransform>(ref broker) : default;
+                    //var parentTransforms     = hasLocalTransforms ? chunkData.targetChunk.GetNativeArray<ParentToWorldTransform>(ref broker) : default;
+                    //var transformAspectArray = new TransformAspect.ResolvedChunk
+                    //{
+                    //    Length                                      = worldTransforms.Length,
+                    //    TransformAspect_m_worldTransformNaC         = worldTransforms,
+                    //    TransformAspect_m_localTransformNaC         = localTransforms,
+                    //    TransformAspect_m_parentToWorldTransformNaC = parentTransforms,
+                    //};
+                    //
+                    //for (int i = 0; i < componentData.outputValueCount; i++)
+                    //{
+                    //    var  index                  = outputValueDataList[componentData.outputValueStartIndex + i].entityIndex;
+                    //    var  transform              = transformAspectArray[index];
+                    //    var  worldTransform         = transform.worldTransform;
+                    //    var  localTransform         = transform.localTransform;
+                    //    var  worldTransformPtr      = (byte*)&worldTransform;
+                    //    var  localTransformPtr      = (byte*)&localTransform;
+                    //    bool worldTransformModified = false;
+                    //    bool localTransformModified = false;
+                    //    for (int j = 0; j < componentData.outputValueCount; i++, j++)
+                    //    {
+                    //        var outputData = outputValueDataList[componentData.outputValueStartIndex + j];
+                    //        if (outputData.entityIndex != index)
+                    //        {
+                    //            i--;
+                    //            break;
+                    //        }
+                    //        if (outputData.componentBindingOffset >= 48)
+                    //        {
+                    //            localTransformModified = true;
+                    //            UnsafeUtility.MemCpy(localTransformPtr + outputData.componentBindingOffset - 48, outputData.outputPtr, outputData.componentBindingByteCount);
+                    //        }
+                    //        else
+                    //        {
+                    //            worldTransformModified = true;
+                    //            UnsafeUtility.MemCpy(worldTransformPtr + outputData.componentBindingOffset, outputData.outputPtr, outputData.componentBindingByteCount);
+                    //        }
+                    //    }
+                    //    if (worldTransformModified)
+                    //        transform.worldTransform = worldTransform;
+                    //    if (localTransformModified)
+                    //        transform.localTransform = localTransform;
+                    //}
                 }
                 else
 #endif
