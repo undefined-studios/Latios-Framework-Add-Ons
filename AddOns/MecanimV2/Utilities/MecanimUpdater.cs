@@ -23,7 +23,7 @@ namespace Latios.Mecanim
                                   float deltaTime,
                                   int maxStateMachineIterations = 32)
         {
-            using var allocator = threadStackAllocator.CreateChildAllocator();
+            var allocator = threadStackAllocator.CreateChildAllocator();
 
             transitionEvents.Clear();
             clipEvents.Clear();
@@ -254,6 +254,10 @@ namespace Latios.Mecanim
             ApplyInertialBlend(ref controller, skeleton, scaledDeltaTime, isVeryFirstUpdate, startedNewInertialBlend, newInertialBlendDuration);
 
             skeleton.EndSamplingAndSync();
+
+            ClearSetTriggers(triggersToReset, parameters);
+
+            allocator.Dispose();
         }
 
         private static void UndoRootMotionDeltaTimeScaling(OptimizedSkeletonAspect skeleton, float deltaTime)
@@ -268,6 +272,20 @@ namespace Latios.Mecanim
                 transformQvvs.rotation = MathUtil.ScaleQuaternion(transformQvvs.rotation, 0.01f / deltaTime);
 
                 localTransformsRW[0] = transformQvvs;
+            }
+        }
+
+        private static void ClearSetTriggers(ReadOnlySpan<BitField64> triggers, Span<MecanimParameter> parameters)
+        {
+            int baseIndex = 0;
+            foreach (var bitfield in triggers)
+            {
+                var bits = bitfield;
+                for (int i = bits.CountTrailingZeros(); i < 64; bits.SetBits(i, false), i = bits.CountTrailingZeros())
+                {
+                    parameters[baseIndex + i].triggerParam = false;
+                }
+                baseIndex += 64;
             }
         }
 

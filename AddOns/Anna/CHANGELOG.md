@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] – 2026-5-30
+
+### Fixed
+
+-   Fixed indexing exception when writing to rigid bodies that are child
+    transforms
+
 ## [0.3.0] – 2026-4-12
 
 ### Changed

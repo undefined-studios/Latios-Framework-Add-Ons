@@ -1,11 +1,9 @@
-﻿using Latios.Transforms.Systems;
-using Unity.Entities;
+﻿using Unity.Entities;
 
 namespace Latios.Navigator.Systems
 {
     [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(TransformSuperSystem))]
     public partial class NavRootSystem : RootSuperSystem
     {
         protected override void CreateSystems()
@@ -16,3 +14,4 @@ namespace Latios.Navigator.Systems
         }
     }
 }
+

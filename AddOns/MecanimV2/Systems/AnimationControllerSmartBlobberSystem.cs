@@ -65,7 +65,25 @@ namespace Latios.Mecanim.Authoring.Systems
 
             parameters.TryGetParameter(condition.parameter, out short conditionParameterIndex);
             blobAnimatorCondition.parameterIndex = conditionParameterIndex;
-            blobAnimatorCondition.compareValue   = new MecanimParameter { floatParam = condition.threshold };
+            switch (blobAnimatorCondition.mode)
+            {
+                case MecanimControllerBlob.Condition.ConditionType.If:
+                case MecanimControllerBlob.Condition.ConditionType.IfNot:
+                    blobAnimatorCondition.compareValue = new MecanimParameter { boolParam = false };
+                    break;
+                case MecanimControllerBlob.Condition.ConditionType.Equals:
+                case MecanimControllerBlob.Condition.ConditionType.NotEqual:
+                    blobAnimatorCondition.compareValue = new MecanimParameter { intParam = (int)condition.threshold };
+                    break;
+                case MecanimControllerBlob.Condition.ConditionType.Less:
+                case MecanimControllerBlob.Condition.ConditionType.Greater:
+                    var paramType = parameters[conditionParameterIndex].type;
+                    if (paramType == AnimatorControllerParameterType.Int)
+                        blobAnimatorCondition.compareValue = new MecanimParameter { intParam = (int)condition.threshold };
+                    else
+                        blobAnimatorCondition.compareValue = new MecanimParameter { floatParam = condition.threshold };
+                    break;
+            }
         }
 
         private void BakeAnimatorStateTransition(ref BlobBuilder builder,
@@ -301,7 +319,7 @@ namespace Latios.Mecanim.Authoring.Systems
             if (addDefaultState)
             {
                 // Add a dummy transition to the default state in the last position of the blob array
-                entryTransitionsBuilder[collapsedTransitions.Count].destinationStateIndex = (short) statesIndicesHashMap[layer.stateMachine.defaultState];
+                entryTransitionsBuilder[collapsedTransitions.Count].destinationStateIndex = (short)statesIndicesHashMap[layer.stateMachine.defaultState];
             }
         }
 
@@ -503,7 +521,7 @@ namespace Latios.Mecanim.Authoring.Systems
 
             layerBlob.stateMachineIndex = stateMachineIndex;
             layerBlob.isSyncLayer       = layer.syncedLayerIndex != -1;
-            layerBlob.syncLayerIndex    = (short) layer.syncedLayerIndex;
+            layerBlob.syncLayerIndex    = (short)layer.syncedLayerIndex;
 
             layerBlob.boneMaskIndex = boneMaskIndex;
 
@@ -527,7 +545,7 @@ namespace Latios.Mecanim.Authoring.Systems
                     motionIndicesArrayBuilder[index] = new MecanimControllerBlob.MotionIndex
                     {
                         isBlendTree = true,
-                        index       = (ushort) blendTreeIndicesHashMap[blendTree],
+                        index       = (ushort)blendTreeIndicesHashMap[blendTree],
                     };
                 }
                 else if (stateMotion is AnimationClip animationClip)
@@ -535,7 +553,7 @@ namespace Latios.Mecanim.Authoring.Systems
                     motionIndicesArrayBuilder[index] = new MecanimControllerBlob.MotionIndex
                     {
                         isBlendTree = false,
-                        index       = (ushort) animationClipsIndicesHashMap[animationClip],
+                        index       = (ushort)animationClipsIndicesHashMap[animationClip],
                     };
                 }
                 else
@@ -587,6 +605,23 @@ namespace Latios.Mecanim.Authoring.Systems
             }
         }
 
+        private void CollectBlendTreeIndicesForStateMachine(AnimatorStateMachine stateMachine, ref UnsafeHashMap<UnityObjectRef<BlendTree>, int> blendTreeIndicesHashMap)
+        {
+            foreach (var state in stateMachine.states)
+            {
+                Motion stateMotion = state.state.motion;
+
+                if (stateMotion is BlendTree blendTree)
+                {
+                    AddBlendTreesToIndicesHashMapRecursively(blendTree, ref blendTreeIndicesHashMap);
+                }
+            }
+            foreach (var childStateMachine in stateMachine.stateMachines)
+            {
+                CollectBlendTreeIndicesForStateMachine(childStateMachine.stateMachine, ref blendTreeIndicesHashMap);
+            }
+        }
+
         private void BakeBlendTrees(ref BlobBuilder builder,
                                     ref MecanimControllerBlob blobAnimatorController,
                                     AnimatorController animatorController,
@@ -596,15 +631,7 @@ namespace Latios.Mecanim.Authoring.Systems
             // Save BlendTrees and their indices for all blend trees for easy lookups while baking layers and blend trees
             foreach (var layer in animatorController.layers)
             {
-                foreach (var state in layer.stateMachine.states)
-                {
-                    Motion stateMotion = state.state.motion;
-
-                    if (stateMotion is BlendTree blendTree)
-                    {
-                        AddBlendTreesToIndicesHashMapRecursively(blendTree, ref blendTreeIndicesHashMap);
-                    }
-                }
+                CollectBlendTreeIndicesForStateMachine(layer.stateMachine, ref blendTreeIndicesHashMap);
             }
 
             BlobBuilderArray<MecanimControllerBlob.BlendTree> blendTreesBuilder = builder.Allocate(ref blobAnimatorController.blendTrees,
@@ -794,7 +821,7 @@ namespace Latios.Mecanim.Authoring.Systems
                 var layer = animatorController.layers[i];
 
                 // Get the state machine index using the current layer index, or the layer index we are syncing with
-                short stateMachineIndex = owningLayerToStateMachine[(short) (layer.syncedLayerIndex == -1 ? i : layer.syncedLayerIndex)];
+                short stateMachineIndex = owningLayerToStateMachine[(short)(layer.syncedLayerIndex == -1 ? i : layer.syncedLayerIndex)];
 
                 short boneMaskIndex = -1;
                 if (layer.avatarMask != null)
@@ -849,7 +876,7 @@ namespace Latios.Mecanim.Authoring.Systems
                 else if (layer.syncedLayerAffectsTiming)
                 {
                     // This is a synced layer that affects timings. Save it as an influencing layer for the layer it's syncing with.
-                    layersInfluencingTimingsByAffectedLayer.Add((short) layer.syncedLayerIndex, i);
+                    layersInfluencingTimingsByAffectedLayer.Add((short)layer.syncedLayerIndex, i);
                 }
             }
 

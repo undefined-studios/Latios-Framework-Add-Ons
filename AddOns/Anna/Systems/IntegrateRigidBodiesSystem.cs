@@ -146,9 +146,9 @@ namespace Latios.Anna.Systems
                 {
                     if (i == bodyRefs.Length || bodyRefs[i].rootIndex != currentIndex)
                     {
-                        var count = currentIndex - start;
+                        var count = i - start;
                         writeCommands.Clear();
-                        for (int j = start; j < currentIndex; j++)
+                        for (int j = start; j < i; j++)
                         {
                             var body = bodyRefs[j];
                             writeCommands.Add(TransformBatchWriteCommand.SetWorldTransform(body.transform, in body.transformToApply));

@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2026-6-20
+
+### Changed
+
+-   Updated Navigator
+
+## [0.8.2] - 2026-6-13
+
+### Changed
+
+-   Updated Navigator
+-   Updated Mecanim V2 to v0.1.8
+
+## [0.8.1] - 2026-5-30
+
+### Changed
+
+-   Updated Mecanim V2 to v0.1.7
+-   Updated Anna to v0.3.1
+
 ## [0.8.0] - 2026-4-12
 
 ### Changed

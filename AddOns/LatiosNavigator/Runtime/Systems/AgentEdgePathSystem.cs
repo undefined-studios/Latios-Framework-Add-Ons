@@ -3,6 +3,7 @@ using Latios.Navigator.Components;
 using Latios.Navigator.Utils;
 using Latios.Transforms;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -19,16 +20,15 @@ namespace Latios.Navigator.Systems
         public void OnCreate(ref SystemState state)
         {
             m_latiosWorld = state.GetLatiosWorldUnmanaged();
-            m_query = state.Fluent()
-                .WithAspect<TransformAspect>()
-                .With<NavmeshAgentTag>()
-                .WithEnabled<NavMeshAgent>()
-                .With<AgentDestination>()
-                .With<AgentPath>()
-                .With<AgentPathEdge>()
-                .WithEnabled<AgenPathRequestedTag>()
-                .Build();
-
+            m_query       = state.Fluent()
+                            .With<WorldTransform>()
+                            .With<NavmeshAgentTag>()
+                            .WithEnabled<NavMeshAgent>()
+                            .With<AgentDestination>()
+                            .With<AgentPath>()
+                            .With<AgentPathEdge>()
+                            .WithEnabled<AgenPathRequestedTag>()
+                            .Build();
 
             state.RequireForUpdate<NavMeshSurfaceBlobReference>();
         }
@@ -39,55 +39,65 @@ namespace Latios.Navigator.Systems
             var navMeshSurfaceBlob =
                 m_latiosWorld.GetNavMeshSurfaceBlob();
 
-            state.Dependency = new PathJob
+            var job = new PathJob
             {
-                AgentHasEdgePathTagLookup  = SystemAPI.GetComponentLookup<AgentHasEdgePathTag>(),
-                AgenPathRequestedTagLookup = SystemAPI.GetComponentLookup<AgenPathRequestedTag>(),
-                NavMeshSurfaceBlob         = navMeshSurfaceBlob
-            }.ScheduleParallel(m_query, state.Dependency);
+                AgentHasEdgePathTagLookup          = SystemAPI.GetComponentLookup<AgentHasEdgePathTag>(),
+                AgenPathRequestedTagLookup         = SystemAPI.GetComponentLookup<AgenPathRequestedTag>(),
+                NavMeshSurfaceBlob                 = navMeshSurfaceBlob,
+                TransformAspectParallelChunkHandle = new TransformAspectParallelChunkHandle(SystemAPI.GetComponentLookup<WorldTransform>(false),
+                                                                                            SystemAPI.GetComponentTypeHandle<RootReference>(true),
+                                                                                            SystemAPI.GetBufferLookup<EntityInHierarchy>(true),
+                                                                                            SystemAPI.GetBufferLookup<EntityInHierarchyCleanup>(true),
+                                                                                            SystemAPI.GetEntityStorageInfoLookup(),
+                                                                                            ref state)
+            };
+            state.Dependency = job.ScheduleByRef(state.Dependency);
+            state.Dependency = job.TransformAspectParallelChunkHandle.ScheduleChunkGrouping(state.Dependency);
+            state.Dependency = job.GetTransformsScheduler().ScheduleParallel(state.Dependency);
         }
 
-
         [BurstCompile]
-        partial struct PathJob : IJobEntity
+        partial struct PathJob : IJobEntity, IJobChunkParallelTransform, IJobEntityChunkBeginEnd
         {
             [BurstCompile]
             struct QueueElement
             {
                 public int    Index;
                 public int    Cost;
-                public float3 MidPoint; // Midpoint of the portal for better pathfinding
+                public float3 MidPoint;  // Midpoint of the portal for better pathfinding
             }
 
             [BurstCompile]
             struct CostComparer : IComparer<QueueElement>
             {
                 public int Compare(QueueElement x,
-                    QueueElement y) => x.Cost.CompareTo(y.Cost);
+                                   QueueElement y) => x.Cost.CompareTo(y.Cost);
             }
 
-            [ReadOnly]                            public NavMeshSurfaceBlobReference          NavMeshSurfaceBlob;
-            [NativeDisableParallelForRestriction] public ComponentLookup<AgentHasEdgePathTag> AgentHasEdgePathTagLookup;
+            [ReadOnly]                            public NavMeshSurfaceBlobReference           NavMeshSurfaceBlob;
+            [NativeDisableParallelForRestriction] public ComponentLookup<AgentHasEdgePathTag>  AgentHasEdgePathTagLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<AgenPathRequestedTag> AgenPathRequestedTagLookup;
+            public TransformAspectParallelChunkHandle                                          TransformAspectParallelChunkHandle;
 
-            [NativeDisableParallelForRestriction]
-            public ComponentLookup<AgenPathRequestedTag> AgenPathRequestedTagLookup;
+            public ref TransformAspectParallelChunkHandle transformAspectHandleAccess => ref TransformAspectParallelChunkHandle.RefAccess();
 
-            void Execute(Entity entity, [EntityIndexInQuery] int _,
-                TransformAspect transform,
-                in NavMeshAgent navmeshAgent,
-                in AgentDestination destination,
-                ref AgentPath agentPath,
-                ref DynamicBuffer<AgentPathEdge> buffer)
+            void Execute(Entity entity, [EntityIndexInChunk] int indexInChunk,
+                         in NavMeshAgent navmeshAgent,
+                         in AgentDestination destination,
+                         ref AgentPath agentPath,
+                         ref DynamicBuffer<AgentPathEdge> buffer)
             {
-                ref var blobAsset = ref NavMeshSurfaceBlob.NavMeshSurfaceBlob.Value;
-                var destinationPosition = destination.Position; // Target position for the funnel algorithm
+                var transform = TransformAspectParallelChunkHandle[indexInChunk];
+
+                ref var blobAsset           = ref NavMeshSurfaceBlob.NavMeshSurfaceBlob.Value;
+                var     destinationPosition = destination.Position;  // Target position for the funnel algorithm
 
                 // Determine start and goal triangles for A*
                 if (!NavUtils.TryFindTriangleContainingPoint(transform.worldPosition, ref blobAsset,
-                        out var startTriangleIndex))
+                                                             out var startTriangleIndex))
                     // Agent is not on the navmesh, find the closest triangle to the agent's position
                     if (!NavUtils.FindClosestTriangleToPoint(transform.worldPosition, ref blobAsset,
-                            out startTriangleIndex))
+                                                             out startTriangleIndex))
                     {
                         // No triangles found near the agent, cannot proceed with pathfinding
                         buffer.Clear();
@@ -96,10 +106,10 @@ namespace Latios.Navigator.Systems
 
                 // Check if the destination is on the navmesh
                 if (!NavUtils.TryFindTriangleContainingPoint(destinationPosition, ref blobAsset,
-                        out var goalTriangleIndex))
+                                                             out var goalTriangleIndex))
                     // Destination is not on the navmesh, find the closest triangle to the destination position
                     if (!NavUtils.FindClosestTriangleToPoint(destinationPosition, ref blobAsset,
-                            out goalTriangleIndex))
+                                                             out goalTriangleIndex))
                     {
                         // No triangles found near the destination, cannot proceed with pathfinding
                         buffer.Clear();
@@ -123,19 +133,17 @@ namespace Latios.Navigator.Systems
                     return;
                 }
 
-
                 var priorityQueue = new NativeMinHeap<QueueElement, CostComparer>(
                     blobAsset.Triangles.Length, Allocator.Temp);
 
                 priorityQueue.Enqueue(new QueueElement
                 {
-                    Index    = startTriangleIndex, // Start A* from the agent's current triangle
+                    Index    = startTriangleIndex,  // Start A* from the agent's current triangle
                     Cost     = 0,
-                    MidPoint = transform.worldPosition // Use agent's position as the initial midpoint
+                    MidPoint = transform.worldPosition  // Use agent's position as the initial midpoint
                 });
 
-
-                var cameFrom = new NativeParallelHashMap<int, int>(blobAsset.Triangles.Length, Allocator.Temp);
+                var cameFrom  = new NativeParallelHashMap<int, int>(blobAsset.Triangles.Length, Allocator.Temp);
                 var costSoFar = new NativeParallelHashMap<int, int>(blobAsset.Triangles.Length, Allocator.Temp);
                 costSoFar.TryAdd(startTriangleIndex, 0);
 
@@ -145,27 +153,27 @@ namespace Latios.Navigator.Systems
                     if (element.Index == goalTriangleIndex)
                     {
                         foundGoal = true;
-                        break; // Found the goal triangle
+                        break;  // Found the goal triangle
                     }
 
                     // Process the current triangle's neighbors
-                    var offsetData = blobAsset.AdjacencyOffsets[element.Index];
+                    var offsetData             = blobAsset.AdjacencyOffsets[element.Index];
                     var currentTriangleForCost = NavUtils.GetTriangleByIndex(element.Index, ref blobAsset);
 
                     for (var i = offsetData.x; i < offsetData.x + offsetData.y; i++)
                     {
-                        var neighborIndex = blobAsset.AdjacencyIndices[i];
+                        var neighborIndex           = blobAsset.AdjacencyIndices[i];
                         var neighborTriangleForCost = NavUtils.GetTriangleByIndex(neighborIndex, ref blobAsset);
 
                         if (!NavUtils.TryGetSharedPortalVertices(in currentTriangleForCost, in neighborTriangleForCost,
-                                out var p1, out var p2))
+                                                                 out var p1, out var p2))
                             continue;
 
                         var targetMidPoint = (p1 + p2) * 0.5f;
 
                         // Calculate the cost to reach this neighbor triangle
                         var newCost = costSoFar[element.Index] + (int)(math.distance(
-                            element.MidPoint, targetMidPoint) * 10);
+                                                                           element.MidPoint, targetMidPoint) * 10);
 
                         // Check if the neighbor triangle is already in the cost map or if the new cost is lower
                         if (!costSoFar.TryGetValue(neighborIndex, out var existingCost) || newCost < existingCost)
@@ -184,7 +192,7 @@ namespace Latios.Navigator.Systems
                     }
                 }
 
-                buffer.Clear(); // Clear previous path
+                buffer.Clear();  // Clear previous path
                 if (!foundGoal)
                 {
                     buffer.Add(new AgentPathEdge
@@ -211,7 +219,7 @@ namespace Latios.Navigator.Systems
                     if (!cameFrom.TryGetValue(currentPathIndex, out var previousPathIndex))
                         break;
 
-                    var triCurrent = NavUtils.GetTriangleByIndex(currentPathIndex, ref blobAsset);
+                    var triCurrent  = NavUtils.GetTriangleByIndex(currentPathIndex, ref blobAsset);
                     var triPrevious = NavUtils.GetTriangleByIndex(previousPathIndex, ref blobAsset);
 
                     // Check if the triangles share a portal
@@ -225,16 +233,14 @@ namespace Latios.Navigator.Systems
                     else
                         break;
 
-
                     currentPathIndex = previousPathIndex;
                 }
-
 
                 buffer.Add(new AgentPathEdge
                 {
                     PortalVertex1 = transform.worldPosition,
                     PortalVertex2 = transform.worldPosition
-                }); // Add start position as first portal vertex
+                });  // Add start position as first portal vertex
 
                 // Reverse the order of portals to start from the agent's position
                 for (var i = tempPathPortals.Length - 1; i >= 0; i--)
@@ -247,7 +253,7 @@ namespace Latios.Navigator.Systems
                 {
                     PortalVertex1 = destinationPosition,
                     PortalVertex2 = destinationPosition
-                }); // Add destination position as last portal vertex
+                });  // Add destination position as last portal vertex
 
                 tempPathPortals.Dispose();
                 cameFrom.Dispose();
@@ -257,6 +263,16 @@ namespace Latios.Navigator.Systems
                 AgenPathRequestedTagLookup.SetComponentEnabled(entity, false);
                 AgentHasEdgePathTagLookup.SetComponentEnabled(entity, true);
             }
+
+            public bool OnChunkBegin(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                return TransformAspectParallelChunkHandle.OnChunkBegin(in chunk, unfilteredChunkIndex, useEnabledMask, in chunkEnabledMask);
+            }
+
+            public void OnChunkEnd(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask, bool chunkWasExecuted)
+            {
+            }
         }
     }
 }
+
